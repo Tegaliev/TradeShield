@@ -1,0 +1,2 @@
+pair,exposure_usd,horizon_days,forecast_annualized_vol_pct,risk_score,risk_category,value_at_risk_usd_95pct,value_at_risk_pct_of_exposure
+USDJPY,250000.0,14,11.26,100.0,High,10913.64,4.37
