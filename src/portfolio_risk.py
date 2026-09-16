@@ -109,7 +109,7 @@ def simulate_portfolio(exposures: dict, horizon_days: int, n_sims: int = N_SIMUL
     exposure_vector = np.array([exposures[p] for p in pairs])
     # Dollar P&L per simulation: positive return in a pair * that pair's
     # exposure = a loss under our stated "adverse move = rate rises" assumption.
-    simulated_pnl = -(simulated_returns * exposure_vector).sum(axis=1)
+    simulated_pnl = (simulated_returns * exposure_vector).sum(axis=1)
 
     diversified_var = float(np.percentile(simulated_pnl, 95))
 

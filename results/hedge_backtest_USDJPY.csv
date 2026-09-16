@@ -1,0 +1,2 @@
+n_windows,mean_unhedged_pnl_usd,median_unhedged_pnl_usd,worst_case_loss_usd_95th_pctile,best_case_gain_usd_5th_pctile,pct_windows_with_a_loss,largest_single_loss_usd,largest_single_gain_usd
+1270,879.36,1165.97,6318.82,5931.0,65.7,11761.8,10203.15
