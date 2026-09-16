@@ -1,0 +1,35 @@
+{
+  "pairs": [
+    "EURUSD",
+    "USDJPY",
+    "USDCNY"
+  ],
+  "exposures_usd": {
+    "EURUSD": 100000,
+    "USDJPY": 80000,
+    "USDCNY": 150000
+  },
+  "horizon_days": 30,
+  "total_exposure_usd": 330000.0,
+  "correlation_matrix": {
+    "EURUSD": {
+      "EURUSD": 1.0,
+      "USDJPY": -0.491,
+      "USDCNY": -0.28
+    },
+    "USDJPY": {
+      "EURUSD": -0.491,
+      "USDJPY": 1.0,
+      "USDCNY": 0.219
+    },
+    "USDCNY": {
+      "EURUSD": -0.28,
+      "USDJPY": 0.219,
+      "USDCNY": 1.0
+    }
+  },
+  "diversified_var_95_usd": 4813.82,
+  "naive_var_95_usd": 9689.54,
+  "diversification_benefit_usd": 4875.72,
+  "diversification_benefit_pct": 50.3
+}
