@@ -69,7 +69,7 @@ def rolling_window_pnl(prices: pd.Series, exposure_usd: float, horizon_days: int
     return pnl
 
 
-def plot_distribution(pnl: np.ndarray, pair: str, horizon_days: int, out_path: str):
+def build_distribution_figure(pnl: np.ndarray, pair: str, horizon_days: int):
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.hist(pnl, bins=60, alpha=0.75, label="Unhedged outcome (historical windows)")
     ax.axvline(0, color="black", linewidth=2, label="Hedged outcome (locked at $0 by definition)")
@@ -78,6 +78,11 @@ def plot_distribution(pnl: np.ndarray, pair: str, horizon_days: int, out_path: s
     ax.set_xlabel("dollar P&L")
     ax.legend()
     fig.tight_layout()
+    return fig
+
+
+def plot_distribution(pnl: np.ndarray, pair: str, horizon_days: int, out_path: str):
+    fig = build_distribution_figure(pnl, pair, horizon_days)
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
 
