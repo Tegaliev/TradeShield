@@ -1,0 +1,14 @@
+**FX Risk Report: USDJPY**
+
+**1. What's happening**
+The USD/JPY exchange rate is currently in a high volatility regime, with significant daily price swings expected over the next 30 days.
+
+**2. Why this risk level**
+This pair has the highest possible risk score (100/100) in our system. The 95% Value-at-Risk (VaR) figure means there is a 5% statistical chance your $250,000 position could lose $15,974 (or 6.39%) from FX moves in the next month.
+
+**3. Practical options**
+*   **Use a forward contract** to lock in today's exchange rate for your future payment/receipt, eliminating this specific risk.
+*   **Consider a currency option**, which acts like insurance. You would pay a premium for the right to exchange at a set rate, protecting you from adverse moves while allowing you to benefit if the rate moves in your favor.
+
+**4. Disclaimer**
+This is an automated research prototype, not financial advice, and does not account for your specific financial situation.
