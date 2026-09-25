@@ -1,169 +1,230 @@
-# FX Volatility & Export Risk Scorer
-
-**Global Innovation Build Challenge V2 — Track 02 (Applied: Medical Technology & Finance)**
-
-> This is a research prototype built for a hackathon. It is not a financial
-> product, not a diagnostic tool, and not financial advice. It must not be
-> used for real trading, hedging, or investment decisions.
-
-## What this is
-
-A risk-management tool for exporters and importers who are exposed to
-currency movements on their trade deals. It answers three questions a
-real trade business would actually ask:
-
-1. **"How risky is this one deal?"** — a GARCH(1,1) volatility forecast
-   turned into a 0-100 risk score, a dollar Value-at-Risk figure, and a
-   plain-language LLM-generated business report.
-2. **"What if I have several deals in different currencies at once?"** —
-   a Monte Carlo simulation of the whole portfolio that accounts for how
-   currencies actually move together (correlation), showing the real
-   diversification benefit in dollar terms.
-3. **"Would hedging actually have helped, historically?"** — a backtest
-   over 5 years of real data comparing hedged vs. unhedged outcomes for
-   deals of this size and horizon.
-
-**Pipeline:** historical FX data → volatility analysis → GARCH volatility
-forecast → (single-deal risk score + VaR) / (portfolio Monte Carlo VaR) /
-(historical hedge backtest) → LLM-generated business report → interactive
-3-tab dashboard with a risk gauge and PDF export
-
-## Key findings
-
-Using 5 years of daily data (2021-2026) for EUR/USD, GBP/USD, USD/CNY,
-USD/INR, and USD/JPY:
-
-- **USD/CNY has by far the lowest long-run volatility (5.43% annualized)**
-  of the pairs tracked — consistent with the yuan being a managed float
-  that the People's Bank of China actively keeps in a narrow band.
-- **USD/JPY has the highest long-run volatility (9.87% annualized)**, and
-  its current GARCH forecast (11.26%) is even higher than its historical
-  average — the model picks up an actively elevated-risk period.
-- **USD/CNY and USD/INR both show high kurtosis** (9.3 and 10.4) despite
-  low day-to-day volatility — "calm most of the time, occasional sharp
-  jump" behavior typical of managed currencies.
-- **Diversification is worth real money**: a 3-currency example portfolio
-  (EUR/USD + USD/JPY + USD/CNY) has a Monte Carlo 95% VaR roughly
-  **50% lower** than the naive sum of each pair's individual VaR, because
-  EUR/USD and USD/JPY are negatively correlated (-0.49) over this period.
-- **Hedging removes tail risk, not average risk**: backtesting a 30-day
-  USD/JPY exposure over the last 5 years, an unhedged position lost money
-  in **65.7% of historical windows** (consistent with the yen's sustained
-  weakening trend), with a worst-case (95th percentile) loss of $6,319 on
-  a $100,000 deal — but also gave up gains of $5,931 or more in the best
-  windows. Hedging trades away the upside to remove that downside; it is
-  not a way to profit on average.
-
-## Project structure
-
-```
-fx-risk-scorer/
-├── src/
-│   ├── data_collection.py       # downloads 5y of daily FX data (yfinance)
-│   ├── eda_and_volatility.py    # rolling volatility, plots, summary stats
-│   ├── volatility_forecast.py   # GARCH(1,1) forecasting + evaluation
-│   ├── risk_scoring.py          # single-deal 0-100 risk score + 95% VaR
-│   ├── portfolio_risk.py        # multi-currency Monte Carlo VaR + correlation
-│   ├── backtest_hedging.py      # historical hedged vs. unhedged backtest
-│   ├── llm_report.py            # LLM business report (Featherless API)
-│   └── dashboard.py             # 3-tab Streamlit UI (Single Deal / Portfolio / Backtest)
-├── data/                        # downloaded FX data (not committed; see below)
-├── results/                     # generated plots, metrics, and reports
-├── requirements.txt
-└── README.md
-```
-
-## Setup
-
-```bash
-pip install -r requirements.txt
-```
-
-Create a file named `.env` in the project root with your Featherless API
-key (only needed for the LLM report; everything else works without it):
-
-```
-FEATHERLESS_API_KEY=fw-your-key-here
-```
-
-## Running the pipeline
-
-Run these in order from the project root:
-
-```bash
-python src/data_collection.py        # downloads FX data into data/
-python src/eda_and_volatility.py     # volatility analysis + plots
-python src/volatility_forecast.py    # GARCH forecasting model
-python src/risk_scoring.py           # single-deal risk score + VaR
-python src/portfolio_risk.py         # multi-currency Monte Carlo VaR
-python src/backtest_hedging.py --pair USDJPY --exposure 100000 --horizon 30
-python src/llm_report.py --pair USDJPY --exposure 250000 --horizon 30
-streamlit run src/dashboard.py       # interactive 3-tab dashboard
-```
-
-(On Windows, replace `python` with `py` if `python` is not recognized.)
-
-## Methodology and limitations
-
-Stated plainly, as any research prototype should:
-
-- **Sign convention**: every P&L calculation in this project assumes "a
-  rate increase is adverse" for the exposure being measured. A real
-  company's actual exposure direction depends on whether they're paying
-  or receiving the foreign currency — this prototype does not model that
-  distinction, which would be a natural next step.
-- **Relative risk score**: the 0-100 score is calculated only against the
-  small set of currency pairs this project tracks (currently 5), not
-  against the entire FX market.
-- **VaR scaling**: Value-at-Risk uses the standard square-root-of-time
-  rule to scale annualized volatility to a chosen horizon — a common
-  first-order approximation, not a full risk-management-grade model.
-- **Monte Carlo simulation**: the portfolio simulation uses each pair's
-  current GARCH volatility forecast combined with the historical
-  correlation matrix (via Cholesky decomposition) to generate 20,000
-  correlated scenarios. It assumes correlations are stable, which is a
-  simplification — real correlations shift, especially in crises.
-- **Hedging backtest**: treats hedging as a free "zero-cost forward,"
-  ignoring the interest-rate differential (covered interest rate parity)
-  that real forward contracts price in. It also uses overlapping
-  historical windows, which are not fully independent observations —
-  the resulting distribution is illustrative, not a rigorous statistical
-  sample.
-
-## Data ethics and scope (per Track 02 rules)
-
-- All data used is publicly available market data; no personal, private,
-  or identifiable data of any kind is used.
-- This project does not operate on real trades or real money. All
-  scoring, simulation, and backtesting is for research/demonstration
-  purposes only.
-
-## AI tools used (disclosure)
-
-In the interest of full transparency, as required by the hackathon rules:
-
-- **Claude (Anthropic)**: used throughout for planning the project
-  architecture, writing and debugging all Python scripts (data
-  collection, volatility analysis, GARCH forecasting, risk scoring,
-  Monte Carlo portfolio simulation, the hedging backtest, LLM
-  integration, and the Streamlit dashboard), and drafting this README.
-  Claude also caught and fixed a P&L sign-convention bug during
-  development (see git history).
-- **GitHub Copilot**: used for initial local environment setup and
-  troubleshooting (Python/Git installation) at the start of the project.
-- **DeepSeek-V3.2** (via the Featherless API): used at runtime, inside
-  the application itself, to generate the plain-language business risk
-  report from the quantitative risk assessment — a core feature of the
-  product, not just a development aid.
-
-I can explain how every part of this project works, including the
-statistical/financial reasoning behind the volatility model, the Monte
-Carlo simulation, and the risk scoring logic.
-
-## Built With
-
-Python, pandas, numpy, yfinance, matplotlib, arch (GARCH models),
-scikit-learn, Monte Carlo simulation, Cholesky decomposition, Streamlit,
-OpenAI Python SDK (used against the Featherless API), python-dotenv,
-DeepSeek-V3.2 (via Featherless), Claude (Anthropic), GitHub Copilot,
-Git, GitHub
+"""
+dashboard.py (v2)
+Three-tab interface tying together everything built so far:
+    1. Single Deal    - one currency pair, risk score + VaR + LLM report + PDF export
+    2. Portfolio       - multiple currency pairs at once, Monte Carlo VaR + diversification benefit
+    3. Hedge Backtest  - historical hedged-vs-unhedged outcome distribution for one pair
+Run locally, from the project root:
+    streamlit run src/dashboard.py
+Requires (depending on which tab you use):
+    - results/volatility_forecast_summary.csv (from volatility_forecast.py) - all tabs
+    - data/fx_rates_combined.csv (from data_collection.py) - portfolio + backtest tabs
+    - a .env file with FEATHERLESS_API_KEY - only for the LLM report button
+"""
+import os
+import sys
+import io
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import streamlit as st
+sys.path.insert(0, os.path.dirname(__file__))
+from risk_scoring import (
+    build_risk_report,
+    load_forecast_table,
+    compute_relative_scores,
+    DEFAULT_EXPOSURE_USD,
+    DEFAULT_HORIZON_DAYS,
+)
+from portfolio_risk import simulate_portfolio
+from backtest_hedging import load_prices, rolling_window_pnl, summarize, build_distribution_figure
+st.set_page_config(page_title="TradeShield", layout="centered")
+st.title("TradeShield")
+st.caption(
+    "A currency risk radar for exporters and importers. "
+)
+    "Research prototype built for GIBC V2 (Track 02: Applied - Finance). "
+    "Not a financial product, not investment advice."
+try:
+    forecast_table = load_forecast_table()
+    TRACKED_PAIRS = forecast_table["pair"].tolist()
+except FileNotFoundError:
+    st.error(
+        "No volatility forecast found yet. Run these two scripts first, in "
+        "order, from a terminal:\n\n"
+        "1. python src/data_collection.py\n"
+        "2. python src/volatility_forecast.py"
+    )
+    st.stop()
+def risk_gauge_figure(score: float, category: str):
+    """A simple semicircular gauge: green/orange/red zones with a needle
+    pointing at the current risk score (0-100)."""
+    fig, ax = plt.subplots(figsize=(5, 3), subplot_kw={"projection": "polar"})
+    zone_bounds = [(0, 33, "#2ecc71"), (33, 67, "#f39c12"), (67, 100, "#e74c3c")]
+    for lo, hi, color in zone_bounds:
+        theta1, theta2 = np.deg2rad(180 - lo * 1.8), np.deg2rad(180 - hi * 1.8)
+        ax.bar(
+            x=(theta1 + theta2) / 2, height=0.4, width=abs(theta1 - theta2),
+            bottom=0.6, color=color, alpha=0.85,
+        )
+    needle_angle = np.deg2rad(180 - score * 1.8)
+    ax.plot([needle_angle, needle_angle], [0, 0.95], color="black", linewidth=3)
+    ax.plot(0, 0, "o", color="black", markersize=10)
+    ax.set_theta_zero_location("W")
+    ax.set_theta_direction(1)
+    ax.set_thetamin(0)
+    ax.set_thetamax(180)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.set_ylim(0, 1)
+    ax.spines["polar"].set_visible(False)
+    ax.grid(False)
+    ax.set_title(f"Risk score: {score}/100 ({category})", pad=20)
+    fig.tight_layout()
+    return fig
+def build_pdf_report(risk_report: dict, gauge_fig, llm_text: str | None) -> bytes:
+    """Combine the gauge chart and key figures (plus the LLM text, if
+    generated) into a single-page PDF the user can download."""
+    buf = io.BytesIO()
+    with PdfPages(buf) as pdf:
+        fig, ax = plt.subplots(figsize=(8.27, 11.69))  # A4 portrait
+        ax.axis("off")
+        gauge_fig.savefig("_tmp_gauge.png", dpi=150, bbox_inches="tight")
+        gauge_img = plt.imread("_tmp_gauge.png")
+        os.remove("_tmp_gauge.png")
+        ax.imshow(gauge_img, extent=(0.15, 0.85, 0.70, 0.98), transform=ax.transAxes)
+        lines = [
+            "TradeShield -- FX Risk Report",
+            "Research prototype (GIBC V2, Track 02). Not financial advice.",
+            "",
+            f"Currency pair: {risk_report['pair']}",
+            f"Deal size: ${risk_report['exposure_usd']:,.0f}",
+            f"Time horizon: {risk_report['horizon_days']} days",
+            f"Forecasted annualized volatility: {risk_report['forecast_annualized_vol_pct']}%",
+            f"Risk score: {risk_report['risk_score']}/100 ({risk_report['risk_category']})",
+            f"95% Value-at-Risk: ${risk_report['value_at_risk_usd_95pct']:,.2f} "
+            f"({risk_report['value_at_risk_pct_of_exposure']}% of deal size)",
+            "",
+        ]
+        if llm_text:
+            lines.append("Business report:")
+            lines.append("")
+            # wrap the LLM text so it doesn't run off the page
+            import textwrap
+            for paragraph in llm_text.split("\n"):
+                lines.extend(textwrap.wrap(paragraph, width=90) or [""])
+        ax.text(0.05, 0.65, "\n".join(lines), transform=ax.transAxes,
+                 va="top", ha="left", fontsize=9, family="monospace")
+        pdf.savefig(fig)
+        plt.close(fig)
+    return buf.getvalue()
+tab_single, tab_portfolio, tab_backtest = st.tabs(["Single Deal", "Portfolio", "Hedge Backtest"])
+# ---------------------------------------------------------------- Tab 1 --
+with tab_single:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        pair = st.selectbox("Currency pair", TRACKED_PAIRS, key="single_pair")
+    with col2:
+        exposure = st.number_input(
+            "Deal size (USD)", min_value=1000.0, value=float(DEFAULT_EXPOSURE_USD),
+            step=1000.0, key="single_exposure",
+        )
+    with col3:
+        horizon = st.slider("Time horizon (days)", 1, 180, DEFAULT_HORIZON_DAYS, key="single_horizon")
+    generate_llm = st.checkbox("Also generate an LLM business report (needs .env set up)", value=True)
+    if st.button("Analyze risk", type="primary", key="single_analyze"):
+        report = build_risk_report(pair, exposure, horizon)
+        gauge_fig = risk_gauge_figure(report["risk_score"], report["risk_category"])
+        st.pyplot(gauge_fig)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Forecasted annualized volatility", f"{report['forecast_annualized_vol_pct']}%")
+        m2.metric("95% Value-at-Risk (VaR)", f"${report['value_at_risk_usd_95pct']:,.0f}")
+        m3.metric("VaR as % of deal size", f"{report['value_at_risk_pct_of_exposure']}%")
+        st.subheader("How this pair compares to the others we track")
+        scored = compute_relative_scores(forecast_table)
+        st.bar_chart(scored.set_index("pair")[["risk_score"]])
+        llm_text = None
+        if generate_llm:
+            with st.spinner("Asking the LLM for a business report..."):
+                try:
+                    from llm_report import generate_report
+                    llm_text = generate_report(report)
+                    st.subheader("Business report")
+                    st.markdown(llm_text)
+                except Exception as exc:
+                    st.error(f"Could not generate the LLM report: {exc}")
+        pdf_bytes = build_pdf_report(report, gauge_fig, llm_text)
+        st.download_button(
+            "Download this report as PDF", data=pdf_bytes,
+            file_name=f"fx_risk_report_{pair}.pdf", mime="application/pdf",
+        )
+# ------------------------------------------------------------- Tab 2 --
+with tab_portfolio:
+    st.write("Enter exposure amounts for the pairs you're exposed to at the same time. "
+             "Leave a pair at 0 to exclude it.")
+    portfolio_horizon = st.slider("Time horizon (days)", 1, 180, DEFAULT_HORIZON_DAYS, key="portfolio_horizon")
+    exposures_input = {}
+    cols = st.columns(len(TRACKED_PAIRS))
+    for col, pair_name in zip(cols, TRACKED_PAIRS):
+        with col:
+            exposures_input[pair_name] = st.number_input(
+                pair_name, min_value=0.0, value=0.0, step=10_000.0, key=f"portfolio_{pair_name}"
+            )
+    active_exposures = {p: v for p, v in exposures_input.items() if v > 0}
+    if st.button("Analyze portfolio risk", type="primary", key="portfolio_analyze"):
+        if len(active_exposures) == 0:
+            st.warning("Enter a nonzero exposure for at least one currency pair.")
+        else:
+            result = simulate_portfolio(active_exposures, portfolio_horizon)
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Diversified VaR (Monte Carlo)", f"${result['diversified_var_95_usd']:,.0f}")
+            m2.metric("Naive VaR (no correlation)", f"${result['naive_var_95_usd']:,.0f}")
+            m3.metric("Diversification benefit", f"{result['diversification_benefit_pct']}%")
+            if len(active_exposures) > 1:
+                st.subheader("Correlation between your exposures (5y history)")
+                corr_df = pd.DataFrame(result["correlation_matrix"])
+                fig, ax = plt.subplots(figsize=(4 + len(corr_df), 3 + len(corr_df) * 0.5))
+                im = ax.imshow(corr_df.values, cmap="RdYlGn_r", vmin=-1, vmax=1)
+                ax.set_xticks(range(len(corr_df.columns)))
+                ax.set_xticklabels(corr_df.columns)
+                ax.set_yticks(range(len(corr_df.index)))
+                ax.set_yticklabels(corr_df.index)
+                for i in range(len(corr_df.index)):
+                    for j in range(len(corr_df.columns)):
+                        ax.text(j, i, f"{corr_df.values[i, j]:.2f}", ha="center", va="center")
+                fig.colorbar(im, ax=ax, label="correlation")
+                fig.tight_layout()
+                st.pyplot(fig)
+            else:
+                st.caption("Add a second currency pair to see the correlation and diversification effect.")
+# ------------------------------------------------------------- Tab 3 --
+with tab_backtest:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        bt_pair = st.selectbox("Currency pair", TRACKED_PAIRS, key="bt_pair")
+    with col2:
+        bt_exposure = st.number_input(
+            "Deal size (USD)", min_value=1000.0, value=float(DEFAULT_EXPOSURE_USD),
+            step=1000.0, key="bt_exposure",
+        )
+    with col3:
+        bt_horizon = st.slider("Time horizon (days)", 5, 180, DEFAULT_HORIZON_DAYS, key="bt_horizon")
+    if st.button("Run historical backtest", type="primary", key="bt_analyze"):
+        prices = load_prices(bt_pair)
+        pnl = rolling_window_pnl(prices, bt_exposure, bt_horizon)
+        stats = summarize(pnl, bt_exposure)
+        st.write(
+            f"Over **{stats['n_windows']}** overlapping {bt_horizon}-day windows in the "
+            f"available history, an unhedged position of this size **lost money in "
+            f"{stats['pct_windows_with_a_loss']}% of windows**."
+        )
+        m1, m2 = st.columns(2)
+        m1.metric("Worst-case loss (95th pctile)", f"${stats['worst_case_loss_usd_95th_pctile']:,.0f}")
+        m2.metric("Best-case gain (5th pctile)", f"${stats['best_case_gain_usd_5th_pctile']:,.0f}")
+        fig = build_distribution_figure(pnl, bt_pair, bt_horizon)
+        st.pyplot(fig)
+        st.caption(
+            "A hedged position would have had $0 currency P&L in every one of these "
+            "windows. Hedging trades away the best-case upside in exchange for "
+            "removing the worst-case downside -- it is not a way to make money on "
+            "average."
+        )
+st.divider()
+st.caption(
+    "GIBC V2 hackathon research prototype. This tool does not account for "
+    "your specific financial situation and should not be used for real "
+    "trading, hedging, or investment decisions."
+)
