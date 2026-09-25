@@ -1,8 +1,4 @@
----
 
-### 2. Содержимое файла `src/dashboard.py`
-
-Скопируйте этот код и сохраните его в файл **`src/dashboard.py`**[cite: 3]:
 
 ```python
 import os
